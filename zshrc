@@ -4,14 +4,35 @@
 # To add machine-only config: create zsh_functions/local.zsh (gitignored).
 # ------------------------------------------------------------------------------
 
-# Source portable environment variables first (safe for bash compatibility)
-: "${SHARED_ZSH_ROOT:=${0:A:h}}"
-if [[ -f "${SHARED_ZSH_ROOT}/env.zsh" ]]; then
-  source "${SHARED_ZSH_ROOT}/env.zsh"
+# PATH — ~/.local/bin first, then Homebrew by OS
+export PATH="$HOME/.local/bin:$PATH"
+if [[ "$(uname)" == "Darwin" ]]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+elif [[ "$(uname)" == "Linux" ]]; then
+  export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
 fi
 
-# Config root — derived from this file's real path (works via source or symlink)
+# Config root (no hardcoded paths; set SHARED_ZSH_ROOT to override)
+HISTSIZE=1000
+SAVEHIST=$HISTSIZE
+if [[ -z "$SHARED_ZSH_ROOT" ]]; then
+  if [[ -L "$HOME/.zshrc" ]]; then
+    # Resolve to real path so we get the install dir (e.g. ~/.config/zsh)
+    if command -v realpath &>/dev/null; then
+      SHARED_ZSH_ROOT=$(dirname "$(realpath "$HOME/.zshrc" 2>/dev/null)")
+    elif command -v python3 &>/dev/null; then
+      SHARED_ZSH_ROOT=$(dirname "$(python3 -c "import os; print(os.path.realpath(os.path.expanduser('~/.zshrc')))" 2>/dev/null)")
+    else
+      link_target=$(readlink "$HOME/.zshrc" 2>/dev/null)
+      [[ -n "$link_target" ]] && [[ "$link_target" != /* ]] && link_target="$HOME/$link_target"
+      [[ -n "$link_target" ]] && SHARED_ZSH_ROOT=$(cd "$(dirname "$link_target")" 2>/dev/null && pwd)
+    fi
+  fi
+  : "${SHARED_ZSH_ROOT:=$HOME/.config/zsh}"
+fi
 export SHARED_ZSH_ROOT
+# History in user home — we never copy or override it
+HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 ZSH_FUNCTION_DIR="${SHARED_ZSH_ROOT}/zsh_functions"
 
 # History options
@@ -46,12 +67,7 @@ bindkey "^[[B" down-line-or-beginning-search
 # Linux Down key
 bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
 
-# Initialize completions
-autoload -Uz compinit
-compinit
-
 # Plugins and helpers (each .zsh in zsh_functions/ is sourced in name order)
-# Note: tool files register their own completions after compinit
 if [[ -d "$ZSH_FUNCTION_DIR" ]]; then
   for file in "$ZSH_FUNCTION_DIR"/*.zsh(N); do
     [[ "$file" == *"/local.zsh" ]] && continue

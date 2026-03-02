@@ -22,21 +22,21 @@ Minimal, expandable Zsh config built on [zsh_unplugged](https://github.com/mattm
 **Option A — run from GitHub (no clone):**
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/zsh-unplugged-minimal/main/setup.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
 ```
 
-Replace `YOUR_USERNAME` and `main` with your GitHub user and branch. The script downloads the config into `~/.config/zsh` and links `~/.zshrc` to it (backing up an existing `~/.zshrc` to `~/.zshrc.bak`).
+The script downloads the config into `~/.config/zsh` and links `~/.zshrc` to it (backing up an existing `~/.zshrc` to `~/.zshrc.bak`).
 
 **Option B — clone then run:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/zsh-unplugged-minimal.git /tmp/zsh-unplugged-minimal && cd /tmp/zsh-unplugged-minimal
+git clone https://github.com/ex-git/zsh-unplugged-minimal.git /tmp/zsh-unplugged-minimal && cd /tmp/zsh-unplugged-minimal
 ./setup.sh
 ```
 
 Start a new shell or run `source ~/.zshrc`. With Option B you can delete the repo folder after — the config lives in `~/.config/zsh`.
 
-**Overrides:** `INSTALL_DIR=~/.zsh ./setup.sh` to install elsewhere. When using the URL install from a fork, set the repo: `REPO_RAW_URL=https://raw.githubusercontent.com/user/repo/branch sh -c "$(curl -fsSL .../setup.sh)"`.
+**Overrides:** `INSTALL_DIR=~/.zsh ./setup.sh` to install elsewhere. When using the URL install from a fork, set the repo: `REPO_RAW_URL=https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main sh -c "$(curl -fsSL .../setup.sh)"`.
 
 **Upgrade:** Run the same install command again (from repo or URL). The script overwrites the config files in `~/.config/zsh` with the latest version and never touches `zsh_functions/local.zsh`.
 
