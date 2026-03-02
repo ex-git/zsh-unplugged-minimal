@@ -12,7 +12,7 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
 # Files to install (relative to repo root). local.zsh is never overwritten.
-FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/pyenv.zsh)
+FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/pyenv.zsh zsh_functions/github.zsh)
 
 # Detect upgrade (config already installed)
 is_upgrade=false
@@ -33,7 +33,10 @@ install_from_url() {
   for path in "${FILES[@]}"; do
     dest="$INSTALL_DIR/$path"
     echo "Fetching $path ..."
-    curl -fsSL "$url_base/$path" -o "$dest" || { echo "Failed to fetch $path" >&2; exit 1; }
+    if ! curl -fsSL "$url_base/$path" -o "$dest" 2>/dev/null; then
+      echo "Skipping $path (not found or network error)" >&2
+      rm -f "$dest"
+    fi
   done
 }
 
@@ -64,8 +67,16 @@ fi
 rm -f "$HOME/.zshrc"
 ln -s "$INSTALL_DIR/zshrc" "$HOME/.zshrc"
 
+# Success summary
+echo ""
 if "$is_upgrade"; then
-  echo "Done. Config upgraded. Run: source ~/.zshrc"
+  echo "✓ Upgrade complete."
 else
-  echo "Done. Config installed to $INSTALL_DIR. Start a new shell or run: source ~/.zshrc"
+  echo "✓ Install complete."
 fi
+echo "  Config: $INSTALL_DIR"
+echo "  Linked: ~/.zshrc → $INSTALL_DIR/zshrc"
+echo ""
+echo "Next: start a new shell or run  source ~/.zshrc"
+echo ""
+exit 0
