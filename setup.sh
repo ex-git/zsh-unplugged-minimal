@@ -12,7 +12,7 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
 # Files to install (relative to repo root). local.zsh is never overwritten.
-FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/pyenv.zsh zsh_functions/github.zsh)
+FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/pyenv.zsh)
 
 # Detect upgrade (config already installed)
 is_upgrade=false
@@ -40,6 +40,26 @@ install_from_url() {
   done
 }
 
+# Remove zsh_functions/*.zsh that are no longer in FILES (never touch local.zsh)
+prune_obsolete_functions() {
+  local fn_dir="$INSTALL_DIR/zsh_functions"
+  [[ ! -d "$fn_dir" ]] && return
+  local path base keep
+  for path in "$fn_dir"/*.zsh; do
+    [[ -f "$path" ]] || continue
+    base="${path##*/}"
+    [[ "$base" == "local.zsh" ]] && continue
+    keep=0
+    for p in "${FILES[@]}"; do
+      if [[ "$p" == zsh_functions/"$base" ]]; then keep=1; break; fi
+    done
+    if (( keep == 0 )); then
+      rm -f "$path"
+      echo "Removed obsolete: zsh_functions/$base"
+    fi
+  done
+}
+
 if "$is_upgrade"; then
   echo "Upgrading zsh config in $INSTALL_DIR ..."
 else
@@ -58,6 +78,8 @@ if [[ -f "$SCRIPT_PATH" ]]; then
 else
   install_from_url "$REPO_RAW_URL"
 fi
+
+prune_obsolete_functions
 
 # Link ~/.zshrc to the installed zshrc (backup only if it's a regular file, not our symlink)
 if [[ -f "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
