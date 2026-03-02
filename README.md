@@ -78,3 +78,4 @@ rm ~/.zshrc
 
 MIT (or your chosen license).
 # zsh-unplugged-minimal
+# zsh-unplugged-minimal
