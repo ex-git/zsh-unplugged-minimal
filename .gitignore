@@ -1,0 +1,14 @@
+# History (personal; optional to track)
+zsh_history
+
+# Local overrides (machine-specific)
+zsh_functions/local.zsh
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Optional backup of old config
+zshrc_old
