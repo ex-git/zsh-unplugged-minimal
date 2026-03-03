@@ -1,94 +1,77 @@
 # zsh_unplugged
 # from: https://github.com/mattmc3/zsh_unplugged
 
-# Paths for state (under config root so they follow INSTALL_DIR)
-STATE_DIR="${SHARED_ZSH_ROOT:-$HOME/.config/zsh}/.state"
-LAST_UPGRADE_DATE_FILE="$STATE_DIR/last_plugins_upgrade.log"
+# $EPOCHSECONDS is a zsh builtin — no date(1) forks needed
+zmodload zsh/datetime 2>/dev/null
 
+# State tracking for auto-update
+ZPLUGIN_UPDATE_DAYS=${ZPLUGIN_UPDATE_DAYS:-14}
+_zplugin_state_dir="${SHARED_ZSH_ROOT:-$HOME/.config/zsh}/.state"
+_zplugin_upgrade_file="$_zplugin_state_dir/last_plugins_upgrade.log"
+[[ -d "$_zplugin_state_dir" ]] || mkdir -p "$_zplugin_state_dir"
 
-# List of the Zsh plugins
+_zplugin_needs_update=1
+if [[ -f "$_zplugin_upgrade_file" ]]; then
+  _zplugin_last=$(<"$_zplugin_upgrade_file")
+  # Gracefully handles old YYYY-MM-DD format: non-integer → triggers update
+  if [[ "$_zplugin_last" == <-> ]] \
+    && (( EPOCHSECONDS - _zplugin_last < ZPLUGIN_UPDATE_DAYS * 86400 )); then
+    _zplugin_needs_update=0
+  fi
+  unset _zplugin_last
+fi
+(( _zplugin_needs_update )) && {
+  echo "It's been a while — let's check for zsh plugin updates."
+  echo "$EPOCHSECONDS" > "$_zplugin_upgrade_file"
+}
+
 plugins=(
-  # plugins that you want loaded first
+  # prompt — loaded first, synchronously
   sindresorhus/pure
 
-  # plugins you want loaded last
+  # interactive helpers — synchronous
   zsh-users/zsh-autosuggestions
   zsh-users/zsh-history-substring-search
 
-  # load these at hypersonic load speeds with zsh-defer
+  # deferred plugins — loaded async after prompt renders
   romkatv/zsh-defer
   rupa/z
-  MichaelAquilina/zsh-you-should-use
   zsh-users/zsh-syntax-highlighting
   zsh-users/zsh-completions
 )
 
+: ${ZPLUGINDIR:=${SHARED_ZSH_ROOT:-${ZDOTDIR:-$HOME/.config/zsh}}/plugins}
 
-# Ensure the directory exists
-mkdir -p "$STATE_DIR"
-
-# Function to check if the update should be run
-function should_update() {
-  local current_date last_upgrade_date days_since_last_run day_word
-
-  # Determine OS-specific date formatting
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    get_date_epoch() {
-      date -d "$1" +%s
-    }
-    current_date=$(date +%Y-%m-%d)
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
-    get_date_epoch() {
-      date -j -f "%Y-%m-%d" "$1" +%s
-    }
-    current_date=$(date -j -f "%Y-%m-%d" "$(date +%Y-%m-%d)" "+%Y-%m-%d")
-  else
-    echo "Unsupported OS"
-    return 0  # Assume update needed
-  fi
-
-  # Check if last upgrade file exists
-  if [[ -f "$LAST_UPGRADE_DATE_FILE" ]]; then
-    last_upgrade_date=$(<"$LAST_UPGRADE_DATE_FILE")
-
-    # Calculate days since last run
-    days_since_last_run=$(( ( $(get_date_epoch "$current_date") - $(get_date_epoch "$last_upgrade_date") ) / 86400 ))
-
-    if (( days_since_last_run < 14 )); then
-      day_word=$(( days_since_last_run == 1 )) && day_word="day" || day_word="days"
-      echo "The last Zsh plugin update check was performed $days_since_last_run $day_word ago."
-      return 1  # No update needed
+# Prune plugin dirs that are no longer in the plugins list
+(( _zplugin_needs_update )) && () {
+  local plugdir name expected=()
+  for repo in $plugins; do expected+=(${repo:t}); done
+  for plugdir in "$ZPLUGINDIR"/*(N/); do
+    name=${plugdir:t}
+    if [[ -d "$plugdir/.git" ]] && (( ! ${expected[(Ie)$name]} )); then
+      echo "Removing unlisted plugin: $name"
+      rm -rf "$plugdir"
     fi
-  fi
-
-  # Save current date
-  echo "$current_date" > "$LAST_UPGRADE_DATE_FILE"
-  return 0  # Update needed
+  done
 }
 
-# Call should_run_update and capture its result
-if should_update; then
-  update_is_needed=true
-else
-  update_is_needed=false
-fi
-
-## Clone a plugin, identify its init file, source it, and add it to your fpath.
+## Clone a plugin, identify its init file, source it, and add it to fpath.
 function plugin-load {
   local repo plugdir initfile initfiles=()
-  : ${ZPLUGINDIR:=${SHARED_ZSH_ROOT:-${ZDOTDIR:-$HOME/.config/zsh}}/plugins}
-  for repo in $@; do
+  for repo in "$@"; do
     plugdir=$ZPLUGINDIR/${repo:t}
     initfile=$plugdir/${repo:t}.plugin.zsh
     if [[ ! -d $plugdir ]]; then
       echo "Cloning $repo..."
       git clone -q --depth 1 --recursive --shallow-submodules \
-        https://github.com/$repo $plugdir
-    else
-      # update the plugin
-      if [ -d "$plugdir/.git" ] && $update_is_needed; then 
-        echo "Updating $repo..."
-        (git -C "$plugdir" pull > /dev/null 2>&1 &)
+        https://github.com/$repo "$plugdir"
+    elif (( _zplugin_needs_update )) && [[ -d "$plugdir/.git" ]]; then
+      git -C "$plugdir" fetch -q 2>/dev/null
+      if ! git -C "$plugdir" diff --quiet HEAD @{u} 2>/dev/null; then
+        echo "Upgrading $repo..."
+        git -C "$plugdir" merge -q @{u} 2>/dev/null
+      else
+        echo "$repo is already up to date."
       fi
     fi
     if [[ ! -e $initfile ]]; then
@@ -101,5 +84,6 @@ function plugin-load {
   done
 }
 
-# load lugins
 plugin-load $plugins
+
+unset _zplugin_state_dir _zplugin_upgrade_file _zplugin_needs_update
