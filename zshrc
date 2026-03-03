@@ -4,32 +4,22 @@
 # To add machine-only config: create zsh_functions/local.zsh (gitignored).
 # ------------------------------------------------------------------------------
 
-# PATH — ~/.local/bin first, then Homebrew by OS
+# PATH — ~/.local/bin first, then Homebrew (Apple Silicon, Intel, Linux)
 export PATH="$HOME/.local/bin:$PATH"
-if [[ "$(uname)" == "Darwin" ]]; then
-  export PATH="/opt/homebrew/bin:$PATH"
-elif [[ "$(uname)" == "Linux" ]]; then
-  export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+if [[ -z "$HOMEBREW_PREFIX" ]]; then
+  for _brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
+    if [[ -x "$_brew_prefix/bin/brew" ]]; then
+      eval "$("$_brew_prefix/bin/brew" shellenv)"
+      break
+    fi
+  done
+  unset _brew_prefix
 fi
 
-# Config root (no hardcoded paths; set SHARED_ZSH_ROOT to override)
+# Config root — derived from this file's real path (works via source or symlink)
 HISTSIZE=1000
 SAVEHIST=$HISTSIZE
-if [[ -z "$SHARED_ZSH_ROOT" ]]; then
-  if [[ -L "$HOME/.zshrc" ]]; then
-    # Resolve to real path so we get the install dir (e.g. ~/.config/zsh)
-    if command -v realpath &>/dev/null; then
-      SHARED_ZSH_ROOT=$(dirname "$(realpath "$HOME/.zshrc" 2>/dev/null)")
-    elif command -v python3 &>/dev/null; then
-      SHARED_ZSH_ROOT=$(dirname "$(python3 -c "import os; print(os.path.realpath(os.path.expanduser('~/.zshrc')))" 2>/dev/null)")
-    else
-      link_target=$(readlink "$HOME/.zshrc" 2>/dev/null)
-      [[ -n "$link_target" ]] && [[ "$link_target" != /* ]] && link_target="$HOME/$link_target"
-      [[ -n "$link_target" ]] && SHARED_ZSH_ROOT=$(cd "$(dirname "$link_target")" 2>/dev/null && pwd)
-    fi
-  fi
-  : "${SHARED_ZSH_ROOT:=$HOME/.config/zsh}"
-fi
+: "${SHARED_ZSH_ROOT:=${0:A:h}}"
 export SHARED_ZSH_ROOT
 # History in user home — we never copy or override it
 HISTFILE="${HISTFILE:-$HOME/.zsh_history}"

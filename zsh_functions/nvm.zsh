@@ -1,9 +1,8 @@
-# NVM (Node Version Manager) — lazy-loaded for fast zsh startup
-# Loads nvm only when you first run nvm, node, npm, or npx.
+# NVM (Node Version Manager) — default node added to PATH eagerly,
+# nvm command itself lazy-loaded for fast startup.
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
-# Install nvm if missing (no-op if already there)
 if [[ ! -d "$NVM_DIR" ]]; then
   echo "Installing nvm to $NVM_DIR..."
   git clone --depth=1 https://github.com/nvm-sh/nvm.git "$NVM_DIR"
@@ -13,31 +12,34 @@ if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
   return 0
 fi
 
-# Load nvm on first use
+# Eagerly add default node to PATH so scripts can find node/npm/npx
+if ! command -v node &>/dev/null; then
+  _nvm_default_bin=""
+  if [[ -s "$NVM_DIR/alias/default" ]]; then
+    _nvm_ver="$(<"$NVM_DIR/alias/default")"
+    # Resolve lts aliases (e.g. lts/* -> lts/jod -> 22.x.x)
+    [[ "$_nvm_ver" == lts/* && -s "$NVM_DIR/alias/$_nvm_ver" ]] \
+      && _nvm_ver="$(<"$NVM_DIR/alias/$_nvm_ver")"
+    _nvm_match=("$NVM_DIR"/versions/node/v${_nvm_ver##v}*(N))
+    (( ${#_nvm_match} )) && _nvm_default_bin="${_nvm_match[-1]}/bin"
+  fi
+  # Fallback: latest installed version
+  if [[ -z "$_nvm_default_bin" ]]; then
+    _nvm_match=("$NVM_DIR"/versions/node/*(N))
+    (( ${#_nvm_match} )) && _nvm_default_bin="${_nvm_match[-1]}/bin"
+  fi
+  [[ -d "$_nvm_default_bin" ]] && export PATH="$_nvm_default_bin:$PATH"
+  unset _nvm_ver _nvm_match _nvm_default_bin
+fi
+
+# Lazy-load nvm itself (slow to source, only needed for nvm use/install/...)
 _nvm_load() {
-  unset -f nvm node npm npx 2>/dev/null
+  unset -f nvm 2>/dev/null
   . "$NVM_DIR/nvm.sh"
   [[ -s "$NVM_DIR/bash_completion" ]] && . "$NVM_DIR/bash_completion"
-  nvm use default 2>/dev/null || true
 }
 
 nvm() {
   _nvm_load
   nvm "$@"
 }
-
-# Only add shims if node isn't already on PATH (e.g. from nvm already loaded)
-if ! command -v node &>/dev/null; then
-  node() {
-    _nvm_load
-    command node "$@"
-  }
-  npm() {
-    _nvm_load
-    command npm "$@"
-  }
-  npx() {
-    _nvm_load
-    command npx "$@"
-  }
-fi
