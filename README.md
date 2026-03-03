@@ -7,7 +7,7 @@ Minimal, expandable Zsh config built on [zsh_unplugged](https://github.com/mattm
 - **Unplugged plugin loading** – [zsh_unplugged](https://github.com/mattmc3/zsh_unplugged)–style: clone plugins on demand, no framework (Pure prompt, autosuggestions, syntax highlighting, completions, etc.)
 - **Minimal & expandable** – Small default set; add any `*.zsh` in `zsh_functions/` or use `local.zsh` for your own config (never overwritten on upgrade).
 - **History** – Shared history across sessions, no duplicates, history search with arrow keys
-- **Paths** – Homebrew (Apple Silicon + Linux), `~/.local/bin`, Bun
+- **Paths** – Homebrew (Apple Silicon, Intel, Linux via `brew shellenv`), `~/.local/bin`
 - **Optional** – pyenv (auto-installed to `~/.config/zsh/pyenv` if used), Docker/Podman wrapper
 - **Platform** – macOS and Linux aliases/helpers
 
@@ -25,7 +25,7 @@ Minimal, expandable Zsh config built on [zsh_unplugged](https://github.com/mattm
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
 ```
 
-The script downloads the config into `~/.config/zsh` and links `~/.zshrc` to it (backing up an existing `~/.zshrc` to `~/.zshrc.bak`).
+The script downloads the config into `~/.config/zsh` and adds a source line to `~/.zshrc` (your existing content is preserved).
 
 **Option B — clone then run:**
 
@@ -46,7 +46,7 @@ After `./setup.sh`, the active config lives under `~/.config/zsh` (or your `INST
 
 ```
 ~/.config/zsh/
-├── zshrc               # Main config (~/.zshrc points here)
+├── zshrc               # Main config (sourced from ~/.zshrc)
 └── zsh_functions/      # Sourced automatically
     ├── unplugged.zsh   # Plugin loader (Pure, autosuggestions, etc.)
     ├── nvm.zsh         # NVM / Node
@@ -64,12 +64,12 @@ The repo you cloned only needs to exist while you run `setup.sh`; it is copied i
 
 ## Uninstall
 
-Remove the symlink and (optionally) the installed config and backup:
+Remove the source line from `~/.zshrc` and (optionally) the installed config:
 
 ```bash
-rm ~/.zshrc
-# Restore previous config:
-# mv ~/.zshrc.bak ~/.zshrc
+# Remove the two-line block added by setup.sh (marker + source line)
+sed -i.bak '/^# --- zsh-unplugged-minimal ---$/,+1d' ~/.zshrc
+
 # Remove installed config:
 # rm -rf ~/.config/zsh
 ```
@@ -77,5 +77,3 @@ rm ~/.zshrc
 ## License
 
 MIT (or your chosen license).
-# zsh-unplugged-minimal
-# zsh-unplugged-minimal

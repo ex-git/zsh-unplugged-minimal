@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install or upgrade zsh config: copy files into user's home and link ~/.zshrc.
+# Install or upgrade zsh config: adds a source line to ~/.zshrc (preserves existing content).
 # Safe to run again to get the latest version (upgrade). Does not overwrite local.zsh.
 # Run from repo:  ./setup.sh
 # Run from URL:   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
@@ -81,13 +81,43 @@ fi
 
 prune_obsolete_functions
 
-# Link ~/.zshrc to the installed zshrc (backup only if it's a regular file, not our symlink)
-if [[ -f "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
-  echo "Backing up existing ~/.zshrc to ~/.zshrc.bak"
-  mv "$HOME/.zshrc" "$HOME/.zshrc.bak"
+MARKER="# --- zsh-unplugged-minimal ---"
+SOURCE_LINE="source \"$INSTALL_DIR/zshrc\""
+INJECT_BLOCK="${MARKER}
+${SOURCE_LINE}"
+
+# Migrate from old symlink-based install
+if [[ -L "$HOME/.zshrc" ]]; then
+  rm -f "$HOME/.zshrc"
+  # Restore backup from previous install if available
+  if [[ -f "$HOME/.zshrc.bak" ]]; then
+    mv "$HOME/.zshrc.bak" "$HOME/.zshrc"
+    echo "Restored ~/.zshrc from backup"
+  fi
 fi
-rm -f "$HOME/.zshrc"
-ln -s "$INSTALL_DIR/zshrc" "$HOME/.zshrc"
+
+# Ensure ~/.zshrc exists
+touch "$HOME/.zshrc"
+
+# Prepend the source line if not already present (idempotent)
+if ! grep -qF "$MARKER" "$HOME/.zshrc" 2>/dev/null; then
+  existing="$(cat "$HOME/.zshrc")"
+  printf '%s\n' "$INJECT_BLOCK" "" "$existing" > "$HOME/.zshrc"
+  echo "Added source line to ~/.zshrc"
+else
+  # Marker exists — update the source path in case INSTALL_DIR changed
+  tmp="$(mktemp)"
+  while IFS= read -r line; do
+    if [[ "$line" == "$MARKER" ]]; then
+      printf '%s\n' "$line"
+      IFS= read -r _old_source  # skip old source line
+      printf '%s\n' "$SOURCE_LINE"
+    else
+      printf '%s\n' "$line"
+    fi
+  done < "$HOME/.zshrc" > "$tmp"
+  mv "$tmp" "$HOME/.zshrc"
+fi
 
 # Success summary
 echo ""
@@ -97,7 +127,7 @@ else
   echo "✓ Install complete."
 fi
 echo "  Config: $INSTALL_DIR"
-echo "  Linked: ~/.zshrc → $INSTALL_DIR/zshrc"
+echo "  ~/.zshrc sources $INSTALL_DIR/zshrc"
 echo ""
 echo "Next: start a new shell or run  source ~/.zshrc"
 echo ""
