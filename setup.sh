@@ -2,10 +2,15 @@
 # Install or upgrade zsh config: adds a source line to ~/.zshrc (preserves existing content).
 # Safe to run again to get the latest version (upgrade). Does not overwrite local.zsh.
 # Run from repo:  ./setup.sh
-# Run from URL:   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
+# Run from URL:   bash -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
 # Override install location: INSTALL_DIR=~/.zsh ./setup.sh
 # Override repo (for URL install): REPO_RAW_URL=https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main ./setup.sh
 set -e
+
+# Re-exec under bash if invoked via sh/dash (e.g. sh -c "$(curl ...)")
+if [ -z "$BASH_VERSION" ]; then
+  exec bash "$0" "$@" 2>/dev/null || exec bash -c "$(cat "$0")" "$@"
+fi
 
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 # When running via curl, script fetches files from this URL. Change when you fork.

@@ -22,7 +22,7 @@ Minimal, expandable Zsh config built on [zsh_unplugged](https://github.com/mattm
 **Option A — run from GitHub (no clone):**
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main/setup.sh)"
 ```
 
 The script downloads the config into `~/.config/zsh` and adds a source line to `~/.zshrc` (your existing content is preserved).
@@ -36,7 +36,7 @@ git clone https://github.com/ex-git/zsh-unplugged-minimal.git /tmp/zsh-unplugged
 
 Start a new shell or run `source ~/.zshrc`. With Option B you can delete the repo folder after — the config lives in `~/.config/zsh`.
 
-**Overrides:** `INSTALL_DIR=~/.zsh ./setup.sh` to install elsewhere. When using the URL install from a fork, set the repo: `REPO_RAW_URL=https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main sh -c "$(curl -fsSL .../setup.sh)"`.
+**Overrides:** `INSTALL_DIR=~/.zsh ./setup.sh` to install elsewhere. When using the URL install from a fork, set the repo: `REPO_RAW_URL=https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main bash -c "$(curl -fsSL .../setup.sh)"`.
 
 **Upgrade:** Run the same install command again (from repo or URL). The script overwrites the config files in `~/.config/zsh` with the latest version and never touches `zsh_functions/local.zsh`.
 
