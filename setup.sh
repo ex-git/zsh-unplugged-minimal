@@ -17,7 +17,7 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
 # Files to install (relative to repo root). local.zsh is never overwritten.
-FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/pyenv.zsh)
+FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/uv.zsh)
 
 # Detect upgrade (config already installed)
 is_upgrade=false
