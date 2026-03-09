@@ -67,3 +67,17 @@ fi
 
 # Local overrides — create zsh_functions/local.zsh for machine-only config (gitignored)
 [[ -f "$ZSH_FUNCTION_DIR/local.zsh" ]] && source "$ZSH_FUNCTION_DIR/local.zsh"
+
+# Initialize compinit and register tool completions
+autoload -Uz compinit
+compinit
+
+# Register tool completions only for installed tools
+command -v nvm &>/dev/null && compdef _nvm_zsh_complete nvm
+command -v pyenv &>/dev/null && compdef _pyenv_zsh_complete pyenv
+command -v uv &>/dev/null && compdef _uv_zsh_complete uv
+command -v uvx &>/dev/null && compdef _uvx_zsh_complete uvx
+command -v uv &>/dev/null && compdef _uv_python_complete uv python
+command -v uv &>/dev/null && compdef _uv_tool_complete uv tool
+command -v uv &>/dev/null && compdef _uv_pip_complete uv pip
+command -v uv &>/dev/null && compdef _uv_cache_complete uv cache
