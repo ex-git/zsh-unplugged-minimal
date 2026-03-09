@@ -19,12 +19,16 @@ REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplu
 # Base files to always install (local.zsh is never overwritten)
 BASE_FILES=(zshrc zsh_functions/unplugged.zsh)
 
-# Optional tools that users can select
-declare -A OPTIONAL_TOOLS=(
-  [nvm]="zsh_functions/nvm.zsh"
-  [pyenv]="zsh_functions/pyenv.zsh"
-  [uv]="zsh_functions/uv.zsh"
-)
+# Optional tools that users can select (uses a function instead of
+# associative array for bash 3.2 compatibility on macOS)
+AVAILABLE_TOOLS="nvm pyenv uv"
+tool_file() {
+  case "$1" in
+    nvm)   echo "zsh_functions/nvm.zsh" ;;
+    pyenv) echo "zsh_functions/pyenv.zsh" ;;
+    uv)    echo "zsh_functions/uv.zsh" ;;
+  esac
+}
 
 # Detect upgrade (config already installed)
 is_upgrade=false
@@ -121,7 +125,7 @@ if [[ "$yn" =~ ^[Nn]$ ]]; then
   echo -n "  nvm (Node Version Manager)? [y/N]: "
   read -r yn
   if [[ "$yn" =~ ^[Yy]$ ]]; then
-    SELECTED_FILES+=("${OPTIONAL_TOOLS[nvm]}")
+    SELECTED_FILES+=("$(tool_file nvm)")
     tool_names+=("nvm")
   fi
 
@@ -129,7 +133,7 @@ if [[ "$yn" =~ ^[Nn]$ ]]; then
   echo -n "  pyenv (Python Version Manager)? [y/N]: "
   read -r yn
   if [[ "$yn" =~ ^[Yy]$ ]]; then
-    SELECTED_FILES+=("${OPTIONAL_TOOLS[pyenv]}")
+    SELECTED_FILES+=("$(tool_file pyenv)")
     tool_names+=("pyenv")
   fi
 
@@ -137,12 +141,12 @@ if [[ "$yn" =~ ^[Nn]$ ]]; then
   echo -n "  uv (Python Package Manager)? [y/N]: "
   read -r yn
   if [[ "$yn" =~ ^[Yy]$ ]]; then
-    SELECTED_FILES+=("${OPTIONAL_TOOLS[uv]}")
+    SELECTED_FILES+=("$(tool_file uv)")
     tool_names+=("uv")
   fi
 else
   # Use default: nvm and uv
-  SELECTED_FILES=("${OPTIONAL_TOOLS[nvm]}" "${OPTIONAL_TOOLS[uv]}")
+  SELECTED_FILES=("$(tool_file nvm)" "$(tool_file uv)")
   tool_names=("nvm" "uv")
 fi
 
