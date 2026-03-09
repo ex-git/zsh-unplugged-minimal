@@ -67,6 +67,14 @@ install_from_url() {
   done
 }
 
+# Map tool .zsh files to the git directories they clone
+tool_data_dirs() {
+  case "$1" in
+    nvm.zsh)   echo "$HOME/.nvm" ;;
+    pyenv.zsh) echo "$INSTALL_DIR/pyenv $HOME/.pyenv" ;;
+  esac
+}
+
 # Remove zsh_functions/*.zsh that are no longer in FILES (never touch local.zsh)
 prune_obsolete_functions() {
   local fn_dir="$INSTALL_DIR/zsh_functions"
@@ -83,6 +91,18 @@ prune_obsolete_functions() {
     if (( keep == 0 )); then
       rm -f "$path"
       echo "Removed obsolete: zsh_functions/$base"
+      for dir in $(tool_data_dirs "$base"); do
+        if [[ -d "$dir" ]]; then
+          echo -n "Remove $dir? [y/N]: "
+          read -r confirm
+          if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            rm -rf "$dir"
+            echo "Removed: $dir"
+          else
+            echo "Kept: $dir"
+          fi
+        fi
+      done
     fi
   done
 }
