@@ -16,6 +16,12 @@ if ! command -v uv &>/dev/null; then
   fi
 fi
 
+# Always use uv-managed python so `uv python pin` is respected.
+if command -v uv &>/dev/null; then
+  python()  { command uv run python "$@" }
+  python3() { command uv run python3 "$@" }
+fi
+
 # Zsh completion for uv
 _uv_zsh_complete() {
   local -a commands
