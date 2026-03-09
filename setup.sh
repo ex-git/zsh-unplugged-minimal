@@ -16,19 +16,37 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 # When running via curl, script fetches files from this URL. Change when you fork.
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
-# Files to install (relative to repo root). local.zsh is never overwritten.
-FILES=(zshrc zsh_functions/unplugged.zsh zsh_functions/nvm.zsh zsh_functions/uv.zsh)
+# Base files to always install (local.zsh is never overwritten)
+BASE_FILES=(zshrc zsh_functions/unplugged.zsh)
+
+# Optional tools that users can select
+declare -A OPTIONAL_TOOLS=(
+  [nvm]="zsh_functions/nvm.zsh"
+  [pyenv]="zsh_functions/pyenv.zsh"
+  [uv]="zsh_functions/uv.zsh"
+)
 
 # Detect upgrade (config already installed)
 is_upgrade=false
 [[ -f "$INSTALL_DIR/zshrc" ]] && is_upgrade=true
 
+# Build FILES array based on selection
+build_files_array() {
+  FILES=("${BASE_FILES[@]}")
+  if [[ ${#SELECTED_FILES[@]} -gt 0 ]]; then
+    FILES+=("${SELECTED_FILES[@]}")
+  fi
+}
+
 install_from_local() {
   local repo_dir="$1"
   mkdir -p "$INSTALL_DIR/zsh_functions"
   cp "$repo_dir/zshrc" "$INSTALL_DIR/zshrc"
-  for f in "$repo_dir"/zsh_functions/*.zsh; do
-    [[ -f "$f" ]] && [[ "$f" != *"/local.zsh" ]] && cp "$f" "$INSTALL_DIR/zsh_functions/"
+  for f in "${FILES[@]}"; do
+    # Only copy files from zsh_functions directory (not zshrc)
+    if [[ "$f" == zsh_functions/* ]] && [[ -f "$repo_dir/$f" ]]; then
+      cp "$repo_dir/$f" "$INSTALL_DIR/$f"
+    fi
   done
 }
 
@@ -65,11 +83,79 @@ prune_obsolete_functions() {
   done
 }
 
+# Save selected tools for future upgrades
+save_selection() {
+  local marker_file="$INSTALL_DIR/.selected_tools"
+  > "$marker_file"
+  for f in "${SELECTED_FILES[@]}"; do
+    local tool_name="${f##*/}"
+    tool_name="${tool_name%.zsh}"
+    echo "$tool_name" >> "$marker_file"
+  done
+}
+
 if "$is_upgrade"; then
   echo "Upgrading zsh config in $INSTALL_DIR ..."
 else
   echo "Installing zsh config to $INSTALL_DIR ..."
 fi
+
+# Prompt for tool selection (always show for both new install and upgrade)
+echo ""
+echo "Available tools:"
+echo "  nvm   - Node Version Manager"
+echo "  pyenv - Python Version Manager"
+echo "  uv    - Fast Python Package Manager"
+echo ""
+echo "Select optional tools to install:"
+echo ""
+echo -n "Use default tools (nvm, uv)? [Y/n]: "
+read -r yn
+
+if [[ "$yn" =~ ^[Nn]$ ]]; then
+  # User wants to customize - ask for each tool
+  SELECTED_FILES=()
+  tool_names=()
+
+  # nvm
+  echo -n "  nvm (Node Version Manager)? [y/N]: "
+  read -r yn
+  if [[ "$yn" =~ ^[Yy]$ ]]; then
+    SELECTED_FILES+=("${OPTIONAL_TOOLS[nvm]}")
+    tool_names+=("nvm")
+  fi
+
+  # pyenv
+  echo -n "  pyenv (Python Version Manager)? [y/N]: "
+  read -r yn
+  if [[ "$yn" =~ ^[Yy]$ ]]; then
+    SELECTED_FILES+=("${OPTIONAL_TOOLS[pyenv]}")
+    tool_names+=("pyenv")
+  fi
+
+  # uv
+  echo -n "  uv (Python Package Manager)? [y/N]: "
+  read -r yn
+  if [[ "$yn" =~ ^[Yy]$ ]]; then
+    SELECTED_FILES+=("${OPTIONAL_TOOLS[uv]}")
+    tool_names+=("uv")
+  fi
+else
+  # Use default: nvm and uv
+  SELECTED_FILES=("${OPTIONAL_TOOLS[nvm]}" "${OPTIONAL_TOOLS[uv]}")
+  tool_names=("nvm" "uv")
+fi
+
+if [[ ${#tool_names[@]} -gt 0 ]]; then
+  echo ""
+  echo "Selected: ${tool_names[*]}"
+else
+  echo ""
+  echo "No optional tools will be installed."
+fi
+
+# Build FILES array
+build_files_array
 
 # Prefer local repo if this script is in one (e.g. ./setup.sh or bash setup.sh)
 SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
@@ -85,6 +171,9 @@ else
 fi
 
 prune_obsolete_functions
+
+# Save selection for future runs
+save_selection
 
 MARKER="# --- zsh-unplugged-minimal ---"
 SOURCE_LINE="source \"$INSTALL_DIR/zshrc\""
@@ -133,6 +222,9 @@ else
 fi
 echo "  Config: $INSTALL_DIR"
 echo "  ~/.zshrc sources $INSTALL_DIR/zshrc"
+if [[ ${#SELECTED_FILES[@]} -gt 0 ]]; then
+  echo "  Optional tools: ${SELECTED_FILES[*]#zsh_functions/}"
+fi
 echo ""
 echo "Next: start a new shell or run  source ~/.zshrc"
 echo ""
