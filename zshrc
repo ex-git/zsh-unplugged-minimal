@@ -4,25 +4,14 @@
 # To add machine-only config: create zsh_functions/local.zsh (gitignored).
 # ------------------------------------------------------------------------------
 
-# PATH — ~/.local/bin first, then Homebrew (Apple Silicon, Intel, Linux)
-export PATH="$HOME/.local/bin:$PATH"
-if [[ -z "$HOMEBREW_PREFIX" ]]; then
-  for _brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
-    if [[ -x "$_brew_prefix/bin/brew" ]]; then
-      eval "$("$_brew_prefix/bin/brew" shellenv)"
-      break
-    fi
-  done
-  unset _brew_prefix
+# Source portable environment variables first (safe for bash compatibility)
+: "${SHARED_ZSH_ROOT:=${0:A:h}}"
+if [[ -f "${SHARED_ZSH_ROOT}/env.zsh" ]]; then
+  source "${SHARED_ZSH_ROOT}/env.zsh"
 fi
 
 # Config root — derived from this file's real path (works via source or symlink)
-HISTSIZE=1000
-SAVEHIST=$HISTSIZE
-: "${SHARED_ZSH_ROOT:=${0:A:h}}"
 export SHARED_ZSH_ROOT
-# History in user home — we never copy or override it
-HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 ZSH_FUNCTION_DIR="${SHARED_ZSH_ROOT}/zsh_functions"
 
 # History options
