@@ -118,6 +118,28 @@ save_selection() {
   done
 }
 
+# Setup bash compatibility - share zsh environment with bash
+setup_bash_compatibility() {
+  local bashrc="$HOME/.bashrc"
+  local marker="# --- zsh-unplugged-minimal (bash compat) ---"
+  local inject_block="${marker}
+if [ -f ~/.zshrc ]; then
+  source ~/.zshrc
+fi"
+
+  # Ensure ~/.bashrc exists
+  touch "$bashrc"
+
+  # Prepend the source line if not already present (idempotent)
+  if ! grep -qF "$marker" "$bashrc" 2>/dev/null; then
+    existing="$(cat "$bashrc")"
+    printf '%s\n' "$inject_block" "" "$existing" > "$bashrc"
+    echo "Added zsh source line to ~/.bashrc for bash compatibility"
+  else
+    echo "Bash compatibility already configured in ~/.bashrc"
+  fi
+}
+
 if "$is_upgrade"; then
   echo "Upgrading zsh config in $INSTALL_DIR ..."
 else
@@ -176,6 +198,16 @@ if [[ ${#tool_names[@]} -gt 0 ]]; then
 else
   echo ""
   echo "No optional tools will be installed."
+fi
+
+# Option to share zsh environment with bash
+echo ""
+echo -n "Share zsh environment with bash? (adds source line to ~/.bashrc) [Y/n]: "
+read -r share_with_bash
+if [[ "$share_with_bash" =~ ^[Nn]$ ]]; then
+  share_with_bash=false
+else
+  share_with_bash=true
 fi
 
 # Build FILES array
@@ -237,6 +269,11 @@ else
   mv "$tmp" "$HOME/.zshrc"
 fi
 
+# Setup bash compatibility if requested
+if "$share_with_bash"; then
+  setup_bash_compatibility
+fi
+
 # Success summary
 echo ""
 if "$is_upgrade"; then
@@ -248,6 +285,9 @@ echo "  Config: $INSTALL_DIR"
 echo "  ~/.zshrc sources $INSTALL_DIR/zshrc"
 if [[ ${#SELECTED_FILES[@]} -gt 0 ]]; then
   echo "  Optional tools: ${SELECTED_FILES[*]#zsh_functions/}"
+fi
+if "$share_with_bash"; then
+  echo "  Bash compatibility: enabled (~/.bashrc sources ~/.zshrc)"
 fi
 echo ""
 echo "Next: start a new shell or run  source ~/.zshrc"
