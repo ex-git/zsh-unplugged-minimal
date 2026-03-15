@@ -20,13 +20,10 @@ fi
 # History settings (portable - works in both bash and zsh)
 export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 export HISTSIZE=1000
+export HISTFILESIZE=2000
 export SAVEHIST=1000
-
-# Bash-specific: HISTFILESIZE and histappend option
-if [[ -n "$BASH_VERSION" ]]; then
-  export HISTFILESIZE=2000
-  shopt -s histappend 2>/dev/null || true
-fi
+# Append to history rather than overwriting (both bash and zsh)
+shopt -s histappend
 
 # NVM (Node Version Manager) - portable setup for bash compatibility
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"

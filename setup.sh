@@ -17,7 +17,7 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
 # Base files to always install (local.zsh is never overwritten)
-BASE_FILES=(zshrc zsh_functions/unplugged.zsh)
+BASE_FILES=(env.zsh zshrc zsh_functions/unplugged.zsh)
 
 # Optional tools that users can select (uses a function instead of
 # associative array for bash 3.2 compatibility on macOS)
@@ -123,21 +123,23 @@ setup_bash_compatibility() {
   local bashrc="$HOME/.bashrc"
   local marker="# --- zsh-unplugged-minimal (bash compat) ---"
   local inject_block="${marker}
-if [ -f ~/.zshrc ]; then
-  source ~/.zshrc
+if [ -f \"$INSTALL_DIR/env.zsh\" ]; then
+  source \"$INSTALL_DIR/env.zsh\"
 fi"
 
   # Ensure ~/.bashrc exists
   touch "$bashrc"
 
-  # Prepend the source line if not already present (idempotent)
-  if ! grep -qF "$marker" "$bashrc" 2>/dev/null; then
-    existing="$(cat "$bashrc")"
-    printf '%s\n' "$inject_block" "" "$existing" > "$bashrc"
-    echo "Added zsh source line to ~/.bashrc for bash compatibility"
-  else
-    echo "Bash compatibility already configured in ~/.bashrc"
+  # Remove any existing entry (handles both old format and duplicates)
+  if grep -qF "$marker" "$bashrc" 2>/dev/null; then
+    grep -vF "$marker" "$bashrc" | grep -v '\.zshrc' | grep -v '^$' > "${bashrc}.tmp" 2>/dev/null || true
+    mv "${bashrc}.tmp" "$bashrc"
   fi
+
+  # Prepend the new source line
+  existing="$(cat "$bashrc")"
+  printf '%s\n' "$inject_block" "" "$existing" > "$bashrc"
+  echo "Added zsh source line to ~/.bashrc for bash compatibility"
 }
 
 if "$is_upgrade"; then
