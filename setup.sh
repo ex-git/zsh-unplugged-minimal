@@ -43,7 +43,7 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 REPO_RAW_URL="${REPO_RAW_URL:-https://raw.githubusercontent.com/ex-git/zsh-unplugged-minimal/main}"
 
 # Base files to always install (local.zsh is never overwritten)
-BASE_FILES=(env.zsh zshrc zsh_functions/unplugged.zsh)
+BASE_FILES=(env.zsh zshrc zsh_functions/unplugged.zsh zsh_functions/history-helpers.zsh)
 
 # Optional tools that users can select (uses a function instead of
 # associative array for bash 3.2 compatibility on macOS)

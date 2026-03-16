@@ -49,12 +49,74 @@ After `./setup.sh`, the active config lives under `~/.config/zsh` (or your `INST
 ├── zshrc               # Main config (sourced from ~/.zshrc)
 └── zsh_functions/      # Sourced automatically
     ├── unplugged.zsh   # Plugin loader (Pure, autosuggestions, etc.)
+    ├── history-helpers.zsh  # History management shortcuts (hr, hs, h)
     ├── nvm.zsh         # NVM / Node
     ├── pyenv.zsh       # Optional pyenv
     └── local.zsh       # Optional machine-only overrides (create yourself)
 ```
 
 The repo you cloned only needs to exist while you run `setup.sh`; it is copied into the folder above.
+
+## History Helpers
+
+Quick shortcuts for managing history:
+
+| Command | Description |
+|---------|-------------|
+| `hr` | Remove the last command from history |
+| `hr <n1> <n2> ..` | Remove one or more entries by event number |
+| `hr <pattern>` | Remove all entries matching pattern |
+| `hr -n ...` | Dry-run: show what would be removed |
+| `hs <pattern>` | Search history for pattern (case-insensitive) |
+| `h` | Show history with line numbers (alias for `history`) |
+
+### Examples
+
+**Remove last command (most common):**
+```zsh
+% my-command --password secret123  # oops, password in history!
+% hr
+Removed: my-command --password secret123
+```
+
+**Preview before removing (dry-run):**
+```zsh
+% hr -n
+Would remove:
+  git push origin main
+```
+
+**Remove by event number (multiple supported):**
+```zsh
+% h 5              # show last 5 entries with line numbers
+  1234  some-command
+  1235  another-command
+  1236  secret password oops!
+  1237  wrong-command
+  1238  h 5
+% hr 1236 1237
+Removed 2 entries.
+```
+
+> **Note:** `hr` itself is automatically omitted from your history.
+
+**Remove by pattern:**
+```zsh
+% hr password
+Removed entries matching: password
+
+% hr -n password    # dry-run first
+Would remove 1 matching entry:
+  1236: secret password oops!
+```
+
+**Search history:**
+```zsh
+% hs docker
+1234: docker ps -a
+1240: docker-compose up -d
+1255: docker logs container-name
+```
 
 ## Customization
 
