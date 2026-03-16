@@ -1,4 +1,3 @@
-#!/bin/bash
 # Install or upgrade zsh config: adds a source line to ~/.zshrc (preserves existing content).
 # Safe to run again to get the latest version (upgrade). Does not overwrite local.zsh.
 # Run from repo:  ./setup.sh
@@ -9,8 +8,35 @@ set -e
 
 # Re-exec under bash if invoked via sh/dash (e.g. sh -c "$(curl ...)")
 if [ -z "$BASH_VERSION" ]; then
-  exec bash "$0" "$@" 2>/dev/null || exec bash -c "$(cat "$0")" "$@"
+  if command -v bash &>/dev/null; then
+    exec bash "$0" "$@"
+  else
+    echo "Error: bash is required but not found." >&2
+    exit 1
+  fi
 fi
+
+# Check for required tools
+check_dependencies() {
+  local missing=()
+
+  if ! command -v git &>/dev/null; then
+    missing+=("git")
+  fi
+
+  # curl is only needed for URL-based installs
+  if [[ ! -f "$0" ]] && ! command -v curl &>/dev/null; then
+    missing+=("curl")
+  fi
+
+  if (( ${#missing[@]} > 0 )); then
+    echo "Error: Missing required tools: ${missing[*]}" >&2
+    echo "Please install them and try again." >&2
+    exit 1
+  fi
+}
+
+check_dependencies
 
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.config/zsh}"
 # When running via curl, script fetches files from this URL. Change when you fork.
@@ -61,8 +87,19 @@ install_from_url() {
     dest="$INSTALL_DIR/$path"
     echo "Fetching $path ..."
     if ! curl -fsSL "$url_base/$path" -o "$dest" 2>/dev/null; then
-      echo "Skipping $path (not found or network error)" >&2
+      echo "Warning: Failed to fetch $path" >&2
       rm -f "$dest"
+    elif [[ ! -s "$dest" ]]; then
+      echo "Warning: Fetched $path is empty" >&2
+      rm -f "$dest"
+    fi
+  done
+
+  # Verify critical files were downloaded
+  for path in "${BASE_FILES[@]}"; do
+    if [[ ! -f "$INSTALL_DIR/$path" ]]; then
+      echo "Error: Failed to download required file: $path" >&2
+      exit 1
     fi
   done
 }
@@ -71,7 +108,7 @@ install_from_url() {
 tool_data_dirs() {
   case "$1" in
     nvm.zsh)   echo "$HOME/.nvm" ;;
-    pyenv.zsh) echo "$INSTALL_DIR/pyenv $HOME/.pyenv" ;;
+    pyenv.zsh) echo "$HOME/.pyenv" ;;
   esac
 }
 
@@ -289,7 +326,7 @@ if [[ ${#SELECTED_FILES[@]} -gt 0 ]]; then
   echo "  Optional tools: ${SELECTED_FILES[*]#zsh_functions/}"
 fi
 if "$share_with_bash"; then
-  echo "  Bash compatibility: enabled (~/.bashrc sources ~/.zshrc)"
+  echo "  Bash compatibility: enabled (~/.bashrc sources env.zsh)"
 fi
 echo ""
 echo "Next: start a new shell or run  source ~/.zshrc"

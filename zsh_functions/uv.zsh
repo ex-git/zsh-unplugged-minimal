@@ -1,4 +1,8 @@
 # UV (Python package manager) — integrated with zsh-unplugged-minimal
+#
+# Optional python wrapper behavior:
+#   UV_WRAP_PYTHON=1  # Enable python/python3 wrappers (default)
+#   UV_WRAP_PYTHON=0  # Disable wrappers, use system python directly
 
 export UV_DIR="${UV_DIR:-$HOME/.local/share/uv}"
 export UV_BIN_DIR="${UV_BIN_DIR:-$HOME/.local/bin}"
@@ -16,8 +20,10 @@ if ! command -v uv &>/dev/null; then
   fi
 fi
 
-# Always use uv-managed python so `uv python pin` is respected.
-if command -v uv &>/dev/null; then
+# Optionally wrap python/python3 to use uv-managed python.
+# Set UV_WRAP_PYTHON=0 to disable and use system python directly.
+# When enabled, `uv python pin` will be respected for all python calls.
+if [[ "${UV_WRAP_PYTHON:-1}" == "1" ]] && command -v uv &>/dev/null; then
   python()  { command uv run python "$@" }
   python3() { command uv run python3 "$@" }
 fi
