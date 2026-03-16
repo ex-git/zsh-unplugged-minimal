@@ -1,21 +1,51 @@
-PYENV_ROOT="${SHARED_ZSH_ROOT:-$HOME/.config/zsh}/pyenv"
+# pyenv (Python Version Manager) — lazy-loaded for fast startup.
+# First `pyenv` command will fully initialize pyenv.
 
-if [[ ! -f "$PYENV_ROOT/bin/pyenv" ]]; then
+export PYENV_ROOT="${PYENV_ROOT:-$HOME/.pyenv}"
+
+# Auto-install pyenv if not present
+if [[ ! -d "$PYENV_ROOT" ]]; then
+  echo "Installing pyenv to $PYENV_ROOT..."
   git clone --depth=1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT"
-  #git clone --depth=1 https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv"
-fi
-if [[ ! -f ${ZDOTDIR:-${HOME}}/.pyenv/bin/pyenv ]]; then
-  command git clone --depth=1 https://github.com/pyenv/pyenv.git ${ZDOTDIR:-~}/.pyenv
-  command git clone --depth=1 https://github.com/pyenv/pyenv-virtualenv.git ${ZDOTDIR:-~}/.pyenv/plugins/pyenv-virtualenv
+  git clone --depth=1 https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv"
 fi
 
-export PYENV_ROOT
-export PATH="$PYENV_ROOT/bin:$PATH"
+# Eagerly add pyenv shims to PATH so python is available
+if [[ -d "$PYENV_ROOT/bin" ]]; then
+  export PATH="$PYENV_ROOT/bin:$PATH"
+fi
 
-if command -v pyenv >/dev/null; then
+# Eagerly add default python to PATH if available
+if ! command -v python &>/dev/null; then
+  _pyenv_default_bin=""
+  if [[ -s "$PYENV_ROOT/version" ]]; then
+    _pyenv_ver="$(<"$PYENV_ROOT/version")"
+    _pyenv_match=("$PYENV_ROOT"/versions/${_pyenv_ver}/bin(N))
+    (( ${#_pyenv_match} )) && _pyenv_default_bin="${_pyenv_match[-1]}"
+  fi
+  # Fallback: latest installed version
+  if [[ -z "$_pyenv_default_bin" ]]; then
+    _pyenv_match=("$PYENV_ROOT"/versions/*/bin(N))
+    (( ${#_pyenv_match} )) && _pyenv_default_bin="${_pyenv_match[-1]}"
+  fi
+  [[ -d "$_pyenv_default_bin" ]] && export PATH="$_pyenv_default_bin:$PATH"
+  unset _pyenv_ver _pyenv_match _pyenv_default_bin
+fi
+
+# Lazy-load pyenv itself (slow to initialize, only needed for pyenv use/install/etc.)
+_pyenv_load() {
+  unset -f pyenv 2>/dev/null
+  export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init -)"
-  #eval "$(pyenv virtualenv-init -)"
-fi
+  if [[ -f "$PYENV_ROOT/plugins/pyenv-virtualenv/bin/pyenv-virtualenv" ]]; then
+    eval "$(pyenv virtualenv-init -)"
+  fi
+}
+
+pyenv() {
+  _pyenv_load
+  pyenv "$@"
+}
 
 # Zsh completion for pyenv
 _pyenv_zsh_complete() {
@@ -46,9 +76,13 @@ _pyenv_zsh_complete() {
     'versions:List all installed versions'
     'whence:List all Python versions that provide a command'
     'which:Display path for executable'
+    'virtualenv:Create a virtualenv'
+    'virtualenv-init:Initialize pyenv-virtualenv'
+    'virtualenvs:List all virtualenvs'
   )
 
   _describe 'command' commands
 }
 
+# Register completion (silently fails if compinit not loaded yet)
 compdef _pyenv_zsh_complete pyenv 2>/dev/null || true

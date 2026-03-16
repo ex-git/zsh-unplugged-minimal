@@ -62,6 +62,18 @@ The repo you cloned only needs to exist while you run `setup.sh`; it is copied i
 - **Plugins** – Edit the `plugins` array in `~/.config/zsh/zsh_functions/unplugged.zsh`. Plugins are cloned into `~/.config/zsh/plugins`.
 - **Local overrides** – Create `~/.config/zsh/zsh_functions/local.zsh` for machine-only aliases and options (it is not overwritten by setup).
 
+### Configuration Options
+
+- **UV_WRAP_PYTHON** – Control whether `python`/`python3` commands are wrapped to use `uv`:
+  - `UV_WRAP_PYTHON=1` (default) – Python commands use uv-managed Python, respecting `uv python pin`
+  - `UV_WRAP_PYTHON=0` – Use system Python directly
+  - Set in `zsh_functions/local.zsh` or your environment
+
+- **Lazy-loading** – NVM and pyenv are lazy-loaded for faster shell startup:
+  - Default node/python versions are added to PATH eagerly
+  - The `nvm` and `pyenv` commands initialize on first use
+  - This significantly reduces shell startup time compared to eager loading
+
 ## Uninstall
 
 Remove the source line from `~/.zshrc` and (optionally) the installed config:
