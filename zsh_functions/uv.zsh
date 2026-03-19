@@ -26,6 +26,7 @@ fi
 if [[ "${UV_WRAP_PYTHON:-1}" == "1" ]] && command -v uv &>/dev/null; then
   python()  { command uv run python "$@" }
   python3() { command uv run python3 "$@" }
+  pip()     { command uv pip "$@" }
 fi
 
 # Zsh completion for uv
