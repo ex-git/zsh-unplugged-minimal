@@ -8,7 +8,8 @@ Minimal, expandable Zsh config built on [zsh_unplugged](https://github.com/mattm
 - **Minimal & expandable** – Small default set; add any `*.zsh` in `zsh_functions/` or use `local.zsh` for your own config (never overwritten on upgrade).
 - **History** – Shared history across sessions, no duplicates, history search with arrow keys
 - **Paths** – Homebrew (Apple Silicon, Intel, Linux via `brew shellenv`), `~/.local/bin`
-- **Optional** – pyenv (auto-installed to `~/.config/zsh/pyenv` if used), Docker/Podman wrapper
+- **Node & Python version managers** – nvm and pyenv are included by default, with `pyenv-virtualenv` support
+- **pyenv build dependencies** – setup can optionally install the recommended Python build packages for common platforms
 - **Platform** – macOS and Linux aliases/helpers
 
 ## Prerequisites
@@ -40,6 +41,31 @@ Start a new shell or run `source ~/.zshrc`. With Option B you can delete the rep
 
 **Upgrade:** Run the same install command again (from repo or URL). The script overwrites the config files in `~/.config/zsh` with the latest version and never touches `zsh_functions/local.zsh`.
 
+If you select `pyenv`, `setup.sh` can also optionally install the suggested build dependencies used by `pyenv install` on common platforms like macOS/Homebrew, Debian/Ubuntu, Fedora, Arch, Alpine, and others.
+
+## pyenv / pyenv-virtualenv usage
+
+Because `pyenv-virtualenv` is installed and initialized automatically, you can use both `pyenv` and virtualenv commands directly:
+
+```zsh
+# install a Python version
+pyenv install 3.12.11
+pyenv global 3.12.11
+
+# create a virtualenv from that version
+pyenv virtualenv 3.12.11 my-project-3.12
+
+# use it in the current directory
+pyenv local my-project-3.12
+python --version
+
+# optionally activate/deactivate manually
+pyenv activate my-project-3.12
+pyenv deactivate
+```
+
+> `pyenv install` compiles Python locally. If builds fail, rerun `setup.sh` and choose to install pyenv build dependencies, or follow pyenv's suggested build environment guide: <https://github.com/pyenv/pyenv/wiki#suggested-build-environment>
+
 ## Project structure
 
 After `./setup.sh`, the active config lives under `~/.config/zsh` (or your `INSTALL_DIR`):
@@ -51,7 +77,7 @@ After `./setup.sh`, the active config lives under `~/.config/zsh` (or your `INST
     ├── unplugged.zsh   # Plugin loader (Pure, autosuggestions, etc.)
     ├── history-helpers.zsh  # History management shortcuts (hr, hs, h)
     ├── nvm.zsh         # NVM / Node
-    ├── pyenv.zsh       # Optional pyenv
+    ├── pyenv.zsh       # pyenv / Python + pyenv-virtualenv
     └── local.zsh       # Optional machine-only overrides (create yourself)
 ```
 
@@ -126,14 +152,10 @@ Would remove 1 matching entry:
 
 ### Configuration Options
 
-- **UV_WRAP_PYTHON** – Control whether `python`/`python3` commands are wrapped to use `uv`:
-  - `UV_WRAP_PYTHON=1` (default) – Python commands use uv-managed Python, respecting `uv python pin`
-  - `UV_WRAP_PYTHON=0` – Use system Python directly
-  - Set in `zsh_functions/local.zsh` or your environment
-
 - **Lazy-loading** – NVM and pyenv are lazy-loaded for faster shell startup:
   - Default node/python versions are added to PATH eagerly
   - The `nvm` and `pyenv` commands initialize on first use
+  - `pyenv-virtualenv` is initialized automatically when available
   - This significantly reduces shell startup time compared to eager loading
 
 ## Uninstall
