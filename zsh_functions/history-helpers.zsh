@@ -11,11 +11,23 @@
 
 _history_usage() {
   cat <<'EOF'
+History helper
+
 Usage:
-  h -l [n]
-  h -s <pattern>
-  h -r [-n] [event_number...|pattern]
-  h -h | --help
+  h -l [n]                        List history entries with line numbers
+  h -s <pattern>                  Search history case-insensitively
+  h -r                            Remove the most recent command from history
+  h -r <n1> <n2> ..               Remove one or more entries by event number
+  h -r <pattern>                  Remove all entries matching a pattern
+  h -r -n [event_number...|text]  Preview what would be removed
+  h -h | --help                   Show this help
+
+Examples:
+  h -l 10
+  h -s docker
+  h -r
+  h -r 1234 1235
+  h -r -n password
 EOF
 }
 
@@ -159,6 +171,8 @@ _history_search() {
     grep -i -- "$pattern" "${HISTFILE:-$HOME/.zsh_history}" | sed 's/^: [0-9]*:[0-9]*;//'
   }
 }
+
+unalias h 2>/dev/null || true
 
 h() {
   case "$1" in
