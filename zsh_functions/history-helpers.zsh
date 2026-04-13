@@ -52,6 +52,10 @@ hr() {
         return 1
       fi
     done
+    if [[ ${#targets_to_remove} -eq 0 ]]; then
+      echo "No valid history entries found for the given event number(s)." >&2
+      return 1
+    fi
   else
     # Pattern argument
     pattern="$1"
