@@ -1,24 +1,80 @@
-# History helpers — convenient shortcuts for managing zsh history
+# History helpers — unified 'h' command for managing zsh history
 #
 # Usage:
-#   hr              — Remove the last command from history
-#   hr <n1> <n2> .. — Remove one or more entries by event number
-#   hr <pattern>    — Remove all entries matching pattern
-#   hr -n ...       — Dry-run: show what would be removed
-#   hs <pattern>    — Search history for pattern (case-insensitive)
-#   h               — Show history with line numbers (alias for history)
+#   h -l [n]            — List history (last n entries, default all)
+#   h -s <pattern>      — Search history for pattern (case-insensitive)
+#   h -r                — Remove the last command from history
+#   h -r <n1> <n2> ..   — Remove one or more entries by event number
+#   h -r <pattern>      — Remove all entries matching pattern
+#   h -r -n ...         — Dry-run: show what would be removed
+#   h -h, h --help      — Show help
 
-# Remove entries from history
-hr() {
+# Clean up legacy aliases/functions from previous versions
+unalias h 2>/dev/null
+unfunction hr 2>/dev/null
+unfunction hs 2>/dev/null
+
+function h {
   # We intentionally DO NOT use 'emulate -L zsh' here because it sets HIST_LOCAL
   # which causes history modifications (like fc -p) to be undone when the function returns.
 
-  local pattern event_num tmp cmd_text histfile dry_run=0
+  local histfile="${${HISTFILE:-$HOME/.zsh_history}}"
+
+  case "$1" in
+    -h|--help)
+      cat <<'EOF'
+Usage: h <flag> [args]
+
+  h -l [n]            List history (last n entries, default all)
+  h -s <pattern>      Search history (case-insensitive)
+  h -r                Remove the last command from history
+  h -r <n1> <n2> ..   Remove entries by event number
+  h -r <pattern>      Remove all entries matching pattern
+  h -r -n ...         Dry-run: show what would be removed
+  h -h, h --help      Show this help
+EOF
+      return 0
+      ;;
+    -l)
+      shift
+      if [[ -n "$1" ]]; then
+        fc -l -"$1"
+      else
+        fc -l 1
+      fi
+      return $?
+      ;;
+    -s)
+      shift
+      if [[ -z "$1" ]]; then
+        echo "Usage: h -s <pattern>" >&2
+        return 1
+      fi
+      local pattern="$1"
+      fc -li -m "*${pattern}*" 1 2>/dev/null || {
+        grep -i -- "$pattern" "$histfile" | sed 's/^: [0-9]*:[0-9]*;//'
+      }
+      return $?
+      ;;
+    -r)
+      shift
+      _h_remove "$@"
+      return $?
+      ;;
+    *)
+      echo "Usage: h <-l|-s|-r|-h> [args]  (try 'h -h' for help)" >&2
+      return 1
+      ;;
+  esac
+}
+
+# Internal: remove entries from history
+function _h_remove {
+  local pattern event_num tmp cmd_text dry_run=0
   local h_size="${HISTSIZE:-1000}"
   local s_size="${SAVEHIST:-1000}"
+  local histfile="${${HISTFILE:-$HOME/.zsh_history}}"
   local -a targets_to_remove
-
-  histfile="${HISTFILE:-$HOME/.zsh_history}"
 
   # Check for dry-run flag
   if [[ "$1" == "-n" ]]; then
@@ -73,7 +129,6 @@ hr() {
   fi
 
   # 3. Sync memory to file before editing
-  # This writes the current session history (including this 'hr' call) to the file.
   fc -W
 
   if [[ ! -f "$histfile" ]]; then
@@ -88,8 +143,7 @@ hr() {
     # Create a newline-separated list of exact commands to remove
     local target_list=$(printf '%s\n' "${targets_to_remove[@]}")
 
-    # Use perl to remove specific commands AND any 'hr' command calls.
-    # We use -0777 to read the whole file for multi-line support.
+    # Use perl to remove specific commands AND any 'h -r' command calls.
     EXPORT_TARGETS="$target_list" perl -0777 -pe '
       BEGIN {
         foreach (split(/\n/, $ENV{EXPORT_TARGETS})) {
@@ -99,18 +153,16 @@ hr() {
       # 1. Remove specifically targeted commands
       s/^(?:: \d+:\d+;)?(.*?)\n/ exists $targets{$1} ? "" : $& /gme;
 
-      # 2. Always remove any "hr" command calls to keep history clean
-      s/^(?:: \d+:\d+;)?hr(?:\s+.*)?\n//gm;
+      # 2. Always remove any "h -r" command calls to keep history clean
+      s/^(?:: \d+:\d+;)?h -r(?:\s+.*)?\n//gm;
     ' "$histfile" > "$tmp"
   else
-    # Remove lines matching pattern, and also always filter out 'hr' calls
-    grep -v -E "$pattern|^(: [0-9]+:[0-9]+;)?hr(\s+.*)?$" "$histfile" > "$tmp"
+    # Remove lines matching pattern, and also always filter out 'h -r' calls
+    grep -v -E "$pattern|^(: [0-9]+:[0-9]+;)?h -r(\s+.*)?$" "$histfile" > "$tmp"
   fi
 
   # 5. Swap files and reload
   if mv "$tmp" "$histfile"; then
-    # Clear current history and reload from the edited file.
-    # This pushes a new history context loaded from the file we just cleaned.
     fc -p "$histfile" "$h_size" "$s_size"
 
     if [[ ${#targets_to_remove} -gt 0 ]]; then
@@ -126,45 +178,37 @@ hr() {
   fi
 }
 
-# Search history for pattern (case-insensitive)
-hs() {
-  local pattern
-  if [[ -z "$1" ]]; then
-    echo "Usage: hs <pattern>"
-    return 1
-  fi
-  pattern="$1"
-  # Search memory first, then file as fallback
-  fc -li -m "*${pattern}*" 1 2>/dev/null || {
-    grep -i -- "$pattern" "${HISTFILE:-$HOME/.zsh_history}" | sed 's/^: [0-9]*:[0-9]*;//'
-  }
-}
-
-# Quick history view
-alias h='history'
-
-# Autocompletion for history helpers
-_history_helpers_completion() {
+# Autocompletion for h
+function _h_completion {
   local curcontext="$curcontext" state line
   typeset -A opt_args
 
-  case "$service" in
-    hr)
-      _arguments -C \
-        '-n[Dry-run: show what would be removed]' \
-        '*:history events:->events'
+  _arguments -C \
+    '1:command:((-l\:"List history" -s\:"Search history" -r\:"Remove entries" -h\:"Show help"))' \
+    '*::arg:->args'
 
-      if [[ "$state" == "events" ]]; then
-        local -a history_list
-        # Get last 20 history items for completion, formatted as "num:cmd"
-        history_list=("${(@f)$(fc -l -20 | sed -E 's/^[[:space:]]*([0-9]+)\*?[[:space:]]+(.*)$/\1:\2/')}")
-        _describe -t history-events 'history event' history_list
-      fi
-      ;;
-    hs)
-      _arguments '1:pattern:_history_complete_word'
+  case "$state" in
+    args)
+      case "${line[1]}" in
+        -r)
+          _arguments -C \
+            '-n[Dry-run: show what would be removed]' \
+            '*:history events:->events'
+          if [[ "$state" == "events" ]]; then
+            local -a history_list
+            history_list=("${(@f)$(fc -l -20 | sed -E 's/^[[:space:]]*([0-9]+)\*?[[:space:]]+(.*)$/\1:\2/')}")
+            _describe -t history-events 'history event' history_list
+          fi
+          ;;
+        -s)
+          _arguments '1:pattern:_history_complete_word'
+          ;;
+        -l)
+          _arguments '1:count:'
+          ;;
+      esac
       ;;
   esac
 }
 
-compdef _history_helpers_completion hr hs
+compdef _h_completion h
